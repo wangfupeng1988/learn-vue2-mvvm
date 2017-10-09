@@ -39,6 +39,4 @@ Vue.prototype.$mount = function (
   return mount.call(this, el, hydrating)
 }
 
-Vue.compile = compileToFunctions
-
 export default Vue

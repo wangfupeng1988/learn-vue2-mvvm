@@ -22,14 +22,25 @@
 - 直接下载 vue 2.4.2 源码 https://github.com/vuejs/vue/releases/tag/v2.4.2
 - 下载专门用本解读的、已经精简过的源码 https://github.com/wangfupeng1988/vue2-source-code/tree/master/MVVM/code
 
-## 章节目录
+## 源码解读
+
+阅读 Vue MVVM 源码，我们最终目的是要搞明白三件事 ———— 先来点高大上的主题(*^__^*)
+
+- 响应式原理
+- 模板引擎
+- 虚拟 DOM
 
 ### export Vue
 
+都是通过`new Vue({...})`来使用 vue ，那么这里的`Vue`是什么？
+
 - [从哪里开始](./wiki/export-vue/01-从哪里开始.md)
 - [Vue 的定义](./wiki/export-vue/02-Vue的定义.md)
+- [对 Vue 的操作](./wiki/export-vue/03-对Vue的操作.md)
 
 ### init
+
+在`new Vue({...})`之后，会立刻触发哪些操作？
 
 ### observe
 
@@ -41,30 +52,10 @@
 
 ## 参考链接
 
-- https://segmentfault.com/a/1190000004346467
-- http://www.cnblogs.com/libin-1/p/6845669.html
-- https://github.com/xiaofuzi/deep-in-vue/blob/master/src/the-super-tiny-vue.js
-- https://github.com/KevinHu-1024/kevins-blog/issues/1
-- https://github.com/KevinHu-1024/kevins-blog/issues/5
-- https://github.com/liutao/vue2.0-source
-- http://www.jianshu.com/p/758da47bfdac
-- http://www.jianshu.com/p/bef1c1ee5a0e
-- http://www.jianshu.com/p/d3a15a1f94a0
-- https://github.com/luobotang/simply-vue
-- http://zhouweicsu.github.io/blog/2017/03/07/vue-2-0-reactivity/
-- https://segmentfault.com/a/1190000007334535
-- https://segmentfault.com/a/1190000007484936
-- http://www.cnblogs.com/aaronjs/p/7274965.html
-- http://www.jackpu.com/-zhang-tu-bang-zhu-ni-xiao-hua-vue2-0de-yuan-ma/
-- https://github.com/youngwind/blog/issues
-- https://www.zybuluo.com/zhouweicsu/note/729712
-- https://github.com/snabbdom/snabbdom
-- https://github.com/Matt-Esch/virtual-dom
-- https://gmiam.com/post/evo.html
-- https://github.com/livoras/blog/issues/13
-- https://calendar.perfplanet.com/2013/diff/
-- https://github.com/georgebbbb/fakeVue
-- http://hcysun.me/2016/04/28/JavaScript%E5%AE%9E%E7%8E%B0MVVM%E4%B9%8B%E6%88%91%E5%B0%B1%E6%98%AF%E6%83%B3%E7%9B%91%E6%B5%8B%E4%B8%80%E4%B8%AA%E6%99%AE%E9%80%9A%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%8F%98%E5%8C%96/
-- https://github.com/answershuto/learnVue
-- https://github.com/xufei/blog/issues/10
+- [参考链接](./REFERENCE-LINKS.md)
 
+## 打赏作者
+
+如果你看完了，感觉还不错，欢迎给我打赏 ———— 以激励我更多输出优质内容
+
+![](https://camo.githubusercontent.com/e1558b631931e0a1606c769a61f48770cc0ccb56/687474703a2f2f696d61676573323031352e636e626c6f67732e636f6d2f626c6f672f3133383031322f3230313730322f3133383031322d32303137303232383131323233373739382d313530373139363634332e706e67)
