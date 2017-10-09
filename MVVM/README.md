@@ -15,6 +15,30 @@
 - 熟悉 ES6 基本用法，如`class` 模块化等
 - 熟悉 vue 基本用法，不了解的同学可以花约 1 小时去看[教程](https://cn.vuejs.org/v2/guide/)
 
+## 下载 vue 源码
+
+该源码解读是基于 vue 2.4.2 版本的，
+
+- 直接下载 vue 2.4.2 源码 https://github.com/vuejs/vue/releases/tag/v2.4.2
+- 下载专门用本解读的、已经精简过的源码 https://github.com/wangfupeng1988/vue2-source-code/tree/master/MVVM/code
+
+## 章节目录
+
+### export Vue
+
+- [从哪里开始](./wiki/export-vue/01-从哪里开始.md)
+- [Vue 的定义](./wiki/export-vue/02-Vue的定义.md)
+
+### init
+
+### observe
+
+### template compiler
+
+### code gen
+
+### render
+
 ## 参考链接
 
 - https://segmentfault.com/a/1190000004346467

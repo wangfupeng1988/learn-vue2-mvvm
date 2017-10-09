@@ -40,3 +40,5 @@ Vue.prototype.$mount = function (
 }
 
 Vue.compile = compileToFunctions
+
+export default Vue
