@@ -24,11 +24,7 @@
 
 ## 源码解读
 
-阅读 Vue MVVM 源码，我们最终目的是要搞明白三件事 ———— 先来点高大上的主题(*^__^*)
-
-- 响应式原理
-- 模板引擎
-- 虚拟 DOM
+- [源码流程概述](./wiki/start.md)
 
 ### export Vue
 
@@ -42,13 +38,25 @@
 
 在`new Vue({...})`之后，会立刻触发哪些操作？
 
+- [init 概述](./wiki/init/01-概述.md)
+- [callhook](./wiki/init/02-callhook.md)
+- [initState](./wiki/init/03-initState.md)
+
 ### observe
+
+未完
 
 ### template compiler
 
+未完
+
 ### code gen
 
+未完
+
 ### render
+
+未完
 
 ## 参考链接
 
