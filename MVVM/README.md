@@ -28,15 +28,11 @@
 
 ### export Vue
 
-都是通过`new Vue({...})`来使用 vue ，那么这里的`Vue`是什么？
-
 - [从哪里开始](./wiki/export-vue/01-从哪里开始.md)
 - [Vue 的定义](./wiki/export-vue/02-Vue的定义.md)
 - [对 Vue 的操作](./wiki/export-vue/03-对Vue的操作.md)
 
 ### init
-
-在`new Vue({...})`之后，会立刻触发哪些操作？
 
 - [init 概述](./wiki/init/01-概述.md)
 - [callhook](./wiki/init/02-callhook.md)
