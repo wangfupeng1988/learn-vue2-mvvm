@@ -1,5 +1,12 @@
-import Dep from './dep'
+# defineReactive 函数
 
+上一节在`new Observer()`的时候，针对传入的`value`，遍历所有属性，然后执行`defineReactive(obj, keys[i], obj[keys[i]])`，本节就介绍`defineReactive`函数。
+
+> **注意，在看本节内容之前，你首先要了解 ES5 中新增的`Object.defineProperty`这个 API ，不了解的同学应该先去查阅资料。**
+
+`defineReactive`定义于`core/observer/index.js`文件中，简化后的代码如下
+
+```js
 export function defineReactive (
   obj: Object,
   key: string,
@@ -63,17 +70,13 @@ export function defineReactive (
         }
     })
 }
+```
 
-/**
- * Collect dependencies on array elements when the array is touched, since
- * we cannot intercept array element access like property getters.
- */
-function dependArray (value: Array<any>) {
-  for (let e, i = 0, l = value.length; i < l; i++) {
-    e = value[i]
-    e && e.__ob__ && e.__ob__.dep.depend()
-    if (Array.isArray(e)) {
-      dependArray(e)
-    }
-  }
-}
+`defineReactive`执行的一开始就有`const dep = new Dep()`，`dep`会一直存在于闭包中，后面会不断用到它。还有，`let childOb = observe(val)`会递归执行`observe`（之前将`observe`时介绍过）。
+
+然后我们直接看`get`，即属性被访问的时候的一些逻辑。`get`的最终目的肯定是获取值，最后返回值，这个在代码中体现的很清晰。我们现在关注的是中间`dep.depend()`附近的这几行。首先，`if (Dep.target) {`中`Dep`是外部引用的一个函数（后面会讲到），如果有`Dep.target`，那么就执行`dep.depend()`以及`childOb.dep.depend()`。至于这个`depend()`，我们可以先暂时不关心，只需要先简单了解到它是绑定依赖关系用的。后面会详细介绍其中的逻辑。
+
+最后看`set`，即属性被重新赋值的时候的一些逻辑。这里最主要的就是`dep.notify()`，细节先不要管，先知道这个操作是触发绑定关系的。即我们最简单的 demo 中，改变了 Vue 示例的属性、页面中 DOM 就会变化，这就是通过这个`dep.notify()`触发的这种变化。
+
+从`get`和`set`里面的核心逻辑可以简单看出 vue 的响应式的过程————**访问属性时绑定依赖，修改属性时触发依赖**。对，就这样。
+

@@ -40,7 +40,9 @@
 
 ### observe
 
-未完
+- [observe 函数](./wiki/observe/01-observe函数.md)
+- [Observer 构造函数](./wiki/observe/02-Observer构造函数.md)
+- [defineReactive 函数](./wiki/observe/03-defineReactive函数.md)
 
 ### template compiler
 
