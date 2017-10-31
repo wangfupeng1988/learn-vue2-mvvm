@@ -8,13 +8,20 @@
 <body>
     <div id="app">
         <p>{{price}} 元</p>
+        <button v-on:click="addHandle">add</button>
     </div>
 
     <script type="text/javascript">
-    var app = new Vue({
+    var model = {
+        price: 100
+    }
+    var vm = new Vue({
         el: '#app',
-        data: {
-            price: 100
+        data: model,
+        methods: {
+            addHandle: function () {
+                this.price++
+            }
         }
     })
     </script>
