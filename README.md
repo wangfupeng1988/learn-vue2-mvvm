@@ -255,15 +255,67 @@ export function defineReactive (
 
 ### 整体流程
 
-画流程图讲清楚以上所有步骤
+参照文章一开始的整体流程图，响应式这部分讲解的其实就是红框标出的区域。
+
+![](http://images2017.cnblogs.com/blog/138012/201711/138012-20171101220930295-735942253.png)
+
+简单说来，就是拿到`data`，创建`Observer`实例，其中会使用`walk`遍历（先不考虑数组的情况）所有`data`的属性，针对`data`每一个属性都执行`defineReactive(data, key, value)`（即使用`Object.defineProperty`监听`get`和`set`）。`get`的时候会绑定依赖，`set`的时候会触发通知，即观察者模式（至于如何绑定依赖、如何触发通知，下文会讲解）。
 
 ### 考虑递归
 
-再搞一下复杂的 model 介绍递归，不用介绍的过于复杂
+以上讲解为了便于快速理解都是拿结构很简单的 Model 做示例，即`data`的属性都是值类型，而不是对象。
+
+```js
+var vm = new Vue({
+    data: {
+        price: 100
+    }
+})
+```
+
+如果`data`的属性中再有对象或者数组，层级结构变得很复杂，如
+
+```js
+var vm = new Vue({
+    data: {
+        list: [
+            {x: 100},
+            {y: 200},
+            {z: 300}
+        ],
+        info: {
+            a: 'a',
+            b: {
+                c: 'c'
+            }
+        }
+    }
+})
+```
+
+这种复杂的情况必须通过**递归**来解决。如果读者对上面简单的示例都理解了，外加你有良好的编程能力（熟悉递归），那这个过程应该不难理解（虽然逻辑上比较绕）—— 关键是要有对递归的熟练掌握。
+
+> PS：为何要针对`data`创建`Observer`实例，而不是直接对`data`执行`walk`？是因为`Observer`实例中有一个`dep`属性，在递归时候会被用到。展开来讲非常绕（递归本来也不适合用语言去描述），自己去代码中找吧，在`defineReactive`函数中搜索`childOb`就能找到相关信息。
 
 ### 接下来
 
-第一，等待依赖的触发；第二，等待依赖的调用
+最后留了两个未完待续的点：第一，`get`中绑定依赖；第二，`set`中触发通知。针对这个简单的示例：
+
+```js
+var vm = new Vue({
+    el: '#app',
+    data: model,
+    methods: {
+        addHandle: function () {
+            this.price++
+        }
+    }
+})
+```
+
+第二点的入口能轻易找到，即`this.price++`，修改`data`属性会触发`set`，然后触发通知，更新 View（虽然现在还不清楚如何更新 View，别急）。但是针对第一点，`get`到`price`的地方肯定是模板（即`<p>{{price}} 元</p>`）中显示的时候，接下来就讲一下如何处理模板、如何`get`到属性。
+
+看看 Vue 强大的模板引擎是如何工作的，这也是 Vue2 相比于 Vue1 升级的重点之一。
 
 -------
 
@@ -283,6 +335,9 @@ https://github.com/livoras/blog/issues/13 深度解析 vdom
 -------
 
 ## 整理流程
+
+Observer Dep Watcher 的关系
+ast render vdom 的关系
 
 
 -------
