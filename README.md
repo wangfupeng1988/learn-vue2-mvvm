@@ -84,12 +84,186 @@ Model 中的数据一旦有变化，就会重新渲染 View ，但是变化也�
 
 还未开始详细介绍 MVVM 之前，该图也不用太关心细节，知道一个大概即可，待介绍完之后，还会再来回顾这幅图。另外，在阅读下文章节的时候，读者也可以经常来回顾一下这幅图，相信随着你看的进展，这幅图会慢慢理解。
 
+----
+
+## 关于精简后的源码
+
+进入 [这里](./code) 查看精简之后的 Vue 源码，根据 v2.4.2 版本，下文在讲述 MVVM 的时候会经常用到这份精简的源码。精简的依据有两种：
+
+- 忽略了 MVVM 之外（如组件、ssr、weex、全局 API 等）的代码
+- 只关注 MVVM 的核心功能，其他增加易用性的功能（watch computed 等）忽略
+
+阅读这份代码，可以从`./code/src/platforms/web/entry-runtime-with-compiler.js`这个入口开始。注意，这份代码只供阅读，不能执行。
+
 -------
 
-## 响应式处理
+## 响应式
 
+### Object.defineProperty
 
+> `Object.defineProperty`是 ES5 中新增的一个 API 目前（2017.11）看来，浏览器兼容性已经不是问题，特别是针对移动端。
 
+对于一个简单的 JS 对象，每当获取属性、重新赋值属性的时候，都要能够监听到（至于为何有这种需求，先不要管）。以下方式是无法满足需求的
+
+```js
+var obj = {
+    name: 'zhangsan',
+    age: 25
+}
+console.log(obj.name)  // 获取属性的时候，如何监听到？
+obj.age = 26           // 赋值属性的时候，如何监听到？
+```
+
+借用`Object.defineProperty`就可以实现这种需求
+
+```js
+var obj = {}
+var name = 'zhangsan'
+Object.defineProperty(obj, "name", {
+    get: function () {
+        console.log('get')
+        return name  
+    },
+    set: function (newVal) {
+        console.log('set')
+        name = newVal
+    }
+});
+
+console.log(obj.name)  // 可以监听到
+obj.name = 'lisi'      // 可以监听到
+```
+
+回想一下 Vue 的基本使用，修改 model 的值之后，view 会立刻被修改，这个逻辑用到的核心 API 就是`Object.defineProperty`。当你要向别人介绍 Vue MVVM 的内部实现，第一个提到的 API 也应该是`Object.defineProperty`。
+
+### 数组的变化如何监听？
+
+针对 JS 对象可以使用`Object.defineProperty`来做监控，但是针对数组元素的改变，却用不了，例如数组的`push` `pop`等。
+
+Vue 解决这个问题的办法也比较简单粗暴，直接将需要监听的数组的原型修改了。**注意，并不是将`Array.prototype`中的方法改了，那样会造成全局污染，后果严重**。看如下例子：
+
+```js
+var arr1 = [1, 2, 3]
+var arr2 = [100, 200, 300]
+arr1.__proto__ = {
+    push: function (val) {
+        console.log('push', val)
+        return Array.prototype.push.call(arr1, val)
+    },
+    pop: function () {
+        console.log('pop')
+        return Array.prototype.pop.call(arr1)
+    }
+    // 其他原型方法暂时省略。。。。
+}
+
+arr1.push(4)    // 可监听到
+arr1.pop()      // 可监听到
+arr2.push(400)  // 不受影响
+arr2.pop()      // 不受影响
+```
+
+Vue 实现的时候会考虑更加全面，不会这么简单粗暴的赋值，但是基本原理都是这样的。如果读者不是特别抠细节的话，了解到这里就 OK 了。
+
+### 给 model 分配一个 Observer 实例
+
+以上介绍了针对 JS 对象和数组，监听数据变化的技术方案。接下来通过一个简单的例子，看一下 Vue 如何做对数据进行监控。先定义一个简单的 Vue 使用示例。
+
+```js
+var vm = new Vue({
+    data: {
+        price: 100
+    }
+})
+```
+
+拿到`data`之后（这里的`data`其实就是 Model ），先赋值一个`__ob__`属性，值是`Observer`的实例，即`data.__ob__ = new Observer(data)`。首先看一下`Observer`函数的定义，为了让读者第一时间看明白原理和流程，把 Vue 源码进行了极致的简化（甚至把数组的处理都去掉了）
+
+```js
+export class Observer {
+  value: any;
+  dep: Dep;
+
+  constructor (value: any) {
+    this.value = value
+    this.dep = new Dep()
+    this.walk(value)
+  }
+
+  walk (obj: Object) {
+    const keys = Object.keys(obj)
+    for (let i = 0; i < keys.length; i++) {
+      defineReactive(obj, keys[i], obj[keys[i]])
+    }
+  }
+}
+```
+
+有两个属性和一个方法。`value`属性就指向了`data`本身，`dep`属性指向一个新创建的`Dep`的实例（`Dep`我们后面再说），还有一个`walk`方法。
+
+### walk
+
+`walk`方法一看就明白，遍历`data`的所有属性，然后执行`defineReactive(data, key, value)`方法。其实，就是将要执行上文介绍的`Object.defineProperty`来绑定监听。
+
+> PS：其实 JS 对象才会走`walk`方法，数组会走另一个方法（上文说过对象和数组的监听方式不一样，因此原因）。但是为了理解简单，就先不管数组了，不影响继续往前赶。
+
+### defineReactive
+
+按照之前的思路
+
+```js
+var vm = new Vue({
+    data: {
+        price: 100
+    }
+})
+```
+
+执行这个方法时的参数应该是这样的`defineReactive(data, key, value)`，`key`和`value`即是`data`的属性和属性值，虽然这里只有一个`price`属性。`defineReactive`的内部实现可以简化为：
+
+```js
+export function defineReactive (
+  obj: Object,
+  key: string,
+  val: any
+) {
+    // 每次执行 defineReactive 都会创建一个 dep ，它会一直存在于闭包中
+    const dep = new Dep()
+
+    Object.defineProperty(obj, key, {
+        get: function reactiveGetter () {
+            if (Dep.target) {
+              dep.depend()
+            }
+            return val
+        },
+        set: function reactiveSetter (newVal) {
+            val = newVal
+            dep.notify()
+        }
+    })
+}
+```
+
+代码跟之前介绍`Object.defineProperty`的时候很相似，区别在于函数中有一个`const dep = new Dep()`（第二次遇到了`Dep`）。而且，在`get`中执行`dep.depend()`，在`set`中触发`dep.notify()`。
+
+### Dep
+
+至于`Dep`是什么，现在无需详细关注，因为它还依赖于另外一个函数，因此现在讲不明白。但是，读者如果有设计模式的了解，再加上你对 Vue 的了解，应该能猜到写什么。
+
+是的，`dep.depend()`就是**绑定依赖**，`dep.notify()`就是**触发通知**，标准的观察者模式。而且，还有知道，是在`get`的时候绑定依赖，在`set`的时候触发通知。在`set`时候触发通知这个很容易理解，要不然修改 Model ，View 怎么会更新呢。那么为何在`get`时候绑定依赖？—— 你不绑定，怎么知道触发什么通知？**而且更重要的，只有`get`过的属性才会绑定依赖，未被`get`过的属性就忽略不管**。这样就保证了只有和 View 有关联的 Model 中的属性才会被绑定依赖关系，这一点很重要。
+
+### 整体流程
+
+画流程图讲清楚以上所有步骤
+
+### 考虑递归
+
+再搞一下复杂的 model 介绍递归，不用介绍的过于复杂
+
+### 接下来
+
+第一，等待依赖的触发；第二，等待依赖的调用
 
 -------
 
@@ -102,8 +276,13 @@ Model 中的数据一旦有变化，就会重新渲染 View ，但是变化也�
 
 ## 虚拟 DOM
 
+https://github.com/livoras/blog/issues/13 深度解析 vdom
 
 
+
+-------
+
+## 整理流程
 
 
 -------

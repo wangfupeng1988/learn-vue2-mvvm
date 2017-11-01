@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>demo2</title>
+</head>
+<body>
+    <p>test</p>
+
+    <script type="text/javascript">
+        // Object.defineProperty
+        var obj = {}
+        var name = 'zhangsan'
+        Object.defineProperty(obj, "name", {
+            get: function () {
+                console.log('get')
+                return name  
+            },
+            set: function (newVal) {
+                console.log('set')
+                name = newVal
+            }
+        });
+
+        // 监听数组元素变化
+        var arr1 = [1, 2, 3]
+        var arr2 = [100, 200, 300]
+        arr1.__proto__ = {
+            push: function (val) {
+                console.log('push', val)
+                return Array.prototype.push.call(arr1, val)
+            },
+            pop: function () {
+                console.log('pop')
+                return Array.prototype.pop.call(arr1)
+            }
+            // 其他原型方法暂时省略。。。。
+        }
+
+    </script>
+</body>
+</html>

@@ -4172,7 +4172,6 @@ function initMixin (Vue) {
         options || {},
         vm
       );
-      // console.log(vm.$options)
     }
     /* istanbul ignore else */
     {
@@ -9965,7 +9964,7 @@ var createCompiler = createCompilerCreator(function baseCompile (
   optimize(ast, options);
   // console.log(ast)
   var code = generate(ast, options);
-  console.log(code.render)
+  // console.log(code.render)
   return {
     ast: ast,
     render: code.render,
