@@ -205,6 +205,8 @@ export class Observer {
 
 `walk`方法一看就明白，遍历`data`的所有属性，然后执行`defineReactive(data, key, value)`方法。其实，就是将要执行上文介绍的`Object.defineProperty`来绑定监听。
 
+看到这里，就明白 Vue 是对初始化时 Model 中已有的数据进行监听。如果初始化完成，再去手动扩展 Model 的属性，新扩展的就无法进行监听了，处分使用 Vue 提供的特有的扩展 API 。
+
 > PS：其实 JS 对象才会走`walk`方法，数组会走另一个方法（上文说过对象和数组的监听方式不一样，因此原因）。但是为了理解简单，就先不管数组了，不影响继续往前赶。
 
 ### defineReactive
@@ -316,16 +318,94 @@ var vm = new Vue({
 })
 ```
 
-第二点的入口能轻易找到，即`this.price++`，修改`data`属性会触发`set`，然后触发通知，更新 View（虽然现在还不清楚如何更新 View，别急）。但是针对第一点，`get`到`price`的地方肯定是模板（即`<p>{{price}} 元</p>`）中显示的时候，接下来就讲一下如何处理模板、如何`get`到属性。
+第二点的入口能轻易找到，即`this.price++`，修改`data`属性会触发`set`，然后触发通知，更新 View（虽然现在还不清楚如何更新 View，别急）。但是针对第一点，`get`到`price`的地方肯定是模板（即`<p>{{price}} 元</p>`）中显示的时候，接下来就讲一下如何处理模板、如何`get`到属性。看看 Vue 强大的模板引擎是如何工作的，这也是 Vue2 相比于 Vue1 升级的重点之一。
 
-看看 Vue 强大的模板引擎是如何工作的，这也是 Vue2 相比于 Vue1 升级的重点之一。
+最后，也可参考 Vue 教程中的 [深入理解响应式](https://cn.vuejs.org/v2/guide/reactivity.html) ，不过这里面还包含了一些当前未讲到的内容，下文会继续讲解。
 
 -------
 
 ## 模板解析
 
+模板解析这部分逻辑比较复杂，也借用了一些其他工具，而且是我们平时工作中不怎么使用的。但是它是理解 MVVM 的关键，我尽量简单描述，读者还是应该坚持看完。
+
+### 模板和 html
+
+```html
+<div id="app">
+    <p>{{price}} 元</p>
+</div>
+```
+
+这是一个最简单的模板，看似是一个 html 直接可以在浏览器中运行，但是它不是。因为 html 不认识`{{price}}`，也不认识`v-on` `v-if` `v-for`等。对于 Vue 来说，**模板就是模板，就是一段非结构化的 JS 字符串，不是 html 代码**。模板到 html 还要经历好几层，第一步要结构化解析，第二步要生成 vdom ，第三步再渲染为页面。“模板解析”这部分，只关注前两步。
+
+### 以何种方式解析模板
+
+针对一个简单的模板，就如上面列出的最简单的模板，Vue 将用何种方式将模板生成 html 呢（其实是先生成 vdom 然后再生成 html ，这里暂且不争论）？—— 会根据这个模板生成一个函数，执行函数时即生成 html 。这种方式估计绝大多数读者都不会第一时间想到，下面就简单讲述一下这个过程，先明白一个大概。
+
+还是以下面一段最简单的模板为例
+
+```html
+<div id="app">
+    <p>{{price}} 元</p>
+</div>
+```
+
+以上模板中的`price`完全可以通过`vm.price`获取，这个没问题。然后还需要定义一个函数`_c`，这个函数用于创建一个 node（不管是 elem 还是 vnode），再定义一个函数`_t`，用于创建文本标签。
+
+```js
+function _c(tag, attrs, children) {
+    // 省略函数体
+}
+function _t(text) {
+    // 省略函数体
+}
+```
+
+然后，根据模板的内容生成如下字符串，注意字符串中的`_c` `_t`和`this.price`
+
+```js
+var code = '_c("div", {id: "app"}, [_c("p", {}, [_t(this.price)])])'
+```
+
+再然后，就可以通过`var render = new Function(code)`来生成一个函数，最终生成的函数其实就是这样一个格式：
+
+```js
+render = function () {
+    _c('div', {id: 'app'}, [
+        _c('p', {}, [
+            _t(this.prirce)
+        ])
+    ])
+}
+```
+
+看以上代码的函数和最初的模板，是不是很相似？他们的区别在于：模板是 html 格式，但是 html 不会识别`{{price}}`；而函数完全是 JS 代码，`this.price`放在 JS 中完全可以被运行。
+
+以上简单描述了从模板到 render 函数的简单过程，其中省略了很多细节和实现方式，下文会深入讲解。不过在看下文之前，这一点的内容还是要求读者必须能轻松理解，否则看下文将会很吃力。
+
+### 针对纯静态节点的考虑
+
+也同时介绍出 staticRenderFns ，介绍出来它的用意
+
+### 解析模板的基本工具
+
+可以先用 simplehtmlparser.js 做例子
+
+### AST - Abstract Syntax Tree
+
 待完善……
 
+### 最大静态子树
+
+待完善……
+
+### code-gen
+
+待完善……
+
+### 生成函数
+
+待完善……
 
 -------
 
@@ -379,8 +459,11 @@ https://github.com/livoras/blog/issues/13 深度解析 vdom
 - https://github.com/xufei/blog/issues/10
 - https://cn.vuejs.org/v2/guide/reactivity.html
 
-## 打赏作者
+## 关于作者
 
-如果你看完了，感觉还不错，欢迎给我打赏 ———— 以激励我更多输出优质内容
+- 关注作者的博客 - 《[深入理解javascript原型和闭包系列](http://www.cnblogs.com/wangfupeng1988/p/4001284.html)》《[深入理解javascript异步系列](https://github.com/wangfupeng1988/js-async-tutorial)》《[CSS知多少](http://www.cnblogs.com/wangfupeng1988/p/4325007.html)》 
+- 学习作者的教程 - 《[前端JS基础面试题](http://coding.imooc.com/class/115.html)》《[React.js模拟大众点评webapp](http://coding.imooc.com/class/99.html)》《[zepto设计与源码分析](http://www.imooc.com/learn/745)》《[用grunt搭建自动化的web前端开发环境](http://study.163.com/course/courseMain.htm?courseId=1103003)》《[json2.js源码解读](http://study.163.com/course/courseMain.htm?courseId=691008)》
+
+如果你感觉有收获，欢迎给我打赏 ———— 以激励我更多输出优质开源内容
 
 ![](https://camo.githubusercontent.com/e1558b631931e0a1606c769a61f48770cc0ccb56/687474703a2f2f696d61676573323031352e636e626c6f67732e636f6d2f626c6f672f3133383031322f3230313730322f3133383031322d32303137303232383131323233373739382d313530373139363634332e706e67)
