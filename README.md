@@ -1,10 +1,14 @@
-# 深入理解 Vue2 MVVM
+# 快速了解 Vue2 MVVM
 
 vue2 除了 MVVM 之外，组件化和 SSR 都是很重要的部分，但本文范围只针对 MVVM 。对 vue 不了解的同学可查阅 [vue 教程](https://cn.vuejs.org/v2/guide/) 。
+
+另外，对于这种经典、复杂框架的学习和源码阅读，我也就不求甚解了，因为甚解的成本太高了。因此，能通过最短的时间学习了解大概的流程，得到我想要的就可以，毕竟我也不会去维护 vue 的源码。2/8 原则，会让你做事更加有效率。
 
 -------
 
 ## 什么是 MVVM
+
+先来说说我对 MVVM 的理解
 
 ### 介绍
 
@@ -52,6 +56,8 @@ MVVM 拆解开来就是 Model View ViewModel ，对设计模式多少了解一�
 
 完全分开之后，click 事件直接关联到 ViewModel 中，事件直接修改 Model ，然后由框架自动去完成 View 的更新。相比于手动操作 DOM ，**你可以通过修改 Model 去控制 View 更新，这样在降低耦合的同时，也更加符合人的逻辑习惯**，简直让人欲罢不能。
 
+从 ng react vue 以及其他 MVVM 框架，基本已经用于全球各种 web 系统的开发中，而且是很快推广普及，可见开发人员对它的认可 —— 这也是读者学习 MVVM 的必要性！
+
 -------
 
 ## Vue2 MVVM 几大要素
@@ -93,7 +99,9 @@ Model 中的数据一旦有变化，就会重新渲染 View ，但是变化也�
 - 忽略了 MVVM 之外（如组件、ssr、weex、全局 API 等）的代码
 - 只关注 MVVM 的核心功能，其他增加易用性的功能（watch computed 等）忽略
 
-阅读这份代码，可以从`./code/src/platforms/web/entry-runtime-with-compiler.js`这个入口开始。注意，这份代码只供阅读，不能执行。
+阅读这份代码，可以从`./code/src/platforms/web/entry-runtime-with-compiler.js`这个入口开始。下文会先介绍 MVVM 的实现逻辑，不会涉及太多源码，文章最后再结合之前的内容来介绍阅读源码的流程（我觉得这样更加合理）。
+
+注意，这份代码只供阅读，不能执行。
 
 -------
 
@@ -177,7 +185,7 @@ var vm = new Vue({
 })
 ```
 
-拿到`data`之后（这里的`data`其实就是 Model ），先赋值一个`__ob__`属性，值是`Observer`的实例，即`data.__ob__ = new Observer(data)`。首先看一下`Observer`函数的定义，为了让读者第一时间看明白原理和流程，把 Vue 源码进行了极致的简化（甚至把数组的处理都去掉了）
+拿到`data`之后（这里的`data`其实就是 Model ），先赋值一个`__ob__`属性，值是`Observer`的实例，即`data.__ob__ = new Observer(data)`。首先看一下`Observer`函数的定义，为了让读者第一时间看明白原理和流程，把 Vue 源码进行了极致的简化（甚至把数组的处理都去掉了）。
 
 ```js
 export class Observer {
@@ -257,9 +265,9 @@ export function defineReactive (
 
 ### 整体流程
 
-![](http://images2017.cnblogs.com/blog/138012/201711/138012-20171101220930295-735942253.png)
+![](https://user-images.githubusercontent.com/9583120/31386983-622b714a-ad8e-11e7-97c7-02204e7a388f.png)
 
-参照文章一开始的整体流程图，响应式这部分讲解的其实就是红框标出的区域。简单说来:
+参照文章一开始的整体流程图，响应式这部分讲解的其实就是左下角的区域。简单说来:
 
 - 就是拿到`data`，创建`Observer`实例
 - 创建过程中会使用`walk`遍历（先不考虑数组的情况）所有`data`的属性
@@ -338,11 +346,179 @@ var vm = new Vue({
 
 这是一个最简单的模板，看似是一个 html 直接可以在浏览器中运行，但是它不是。因为 html 不认识`{{price}}`，也不认识`v-on` `v-if` `v-for`等。对于 Vue 来说，**模板就是模板，就是一段非结构化的 JS 字符串，不是 html 代码**。模板到 html 还要经历好几层，第一步要结构化解析，第二步要生成 vdom ，第三步再渲染为页面。“模板解析”这部分，只关注前两步。
 
-### 以何种方式解析模板
+### 模板处理的三个步骤
 
-针对一个简单的模板，就如上面列出的最简单的模板，Vue 将用何种方式将模板生成 html 呢（其实是先生成 vdom 然后再生成 html ，这里暂且不争论）？—— 会根据这个模板生成一个函数，执行函数时即生成 html 。这种方式估计绝大多数读者都不会第一时间想到，下面就简单讲述一下这个过程，先明白一个大概。
+参考源码 [./code/src/compiler/index.js](./code/src/compiler/index.js) 中的关键代码，这就是 Vue 处理模板的三个步骤。
 
-还是以下面一段最简单的模板为例
+```js
+// 传入一个函数作为参数
+function baseCompile (
+  template: string,
+  options: CompilerOptions
+): CompiledResult {
+  // parse 定义于 ./parser/index
+  // 将 html 转换为 ast （抽象语法树）
+  const ast = parse(template.trim(), options)
+  // optimize 定义于 ./optimizer
+  // 标记 ast 中的静态节点，即不包含变量无需改变的节点
+  optimize(ast, options)
+  // generate 定义于 ./codegen/index
+  // 返回 {render: '..render函数体..（字符串）', staticRenderFns: Array<string>}
+  const code = generate(ast, options)
+
+  // 返回 CompiledResult 格式
+  return {
+    ast,
+    render: code.render,
+    staticRenderFns: code.staticRenderFns
+  }
+}
+```
+
+下面先简单介绍一下每一步的作用，看不明白可以直接往下看，下面有更加详细的介绍。
+
+第一步，是将模板处理为 AST，即抽象语法树（Abstract Syntax Tree）。正如浏览器将 HTML 代码处理为结构化的 DOM 树一样，Vue 将模板处理为结构化的 AST ，每个节点都包含了标签、属性以及指令和指令类型，如`v-for` `v-text`等。这个过程，只要读者能理解“将非结构化的字符串处理成结构化的 JSON 数据”，就能理解该过程的用意。
+
+第二步，优化 AST ，找到最大静态子树。这一步就是要分清楚，在 AST 当中，哪些是动态的，哪些是静态的。其实，通过判断该节点以及其子节点有没有关联指令就可以判断。指令中绑定了 Model 的数据，Model 一更新，动态的节点肯定要随时更新。而静态节点和 Model 都没有关系，因此只更新一次即可。总之，第二步是为了提高后面更新 View 的效率。
+
+第三步，生成 render 函数，将模板字符串转换为 JS 真正可执行的函数。可直接看下文的详细介绍。
+
+### 生成 AST
+
+```html
+<div id="app">
+    <p>{{price}} 元</p>
+</div>
+```
+
+上面是一个最简单的模板，它经过 Vue 的处理并生成的 AST 简化之后大概这样
+
+```js
+{
+    type: 1,  // 对应 nodeType
+    tag: 'div',
+    attrs : {id: 'app'},
+    children: [
+        {
+            type: 1,
+            tag: 'p',
+            attrs: {},
+            children: [
+                {
+                    type: 2,  // text 类型
+                    text: '{{price}} 元',
+                    expression: '_s(price)+" 元"'
+                }
+            ]
+        }
+    ]
+}
+```
+
+模板和 AST 的对应关系应该不用多说了，有 JS DOM 操作基础的读者应该都能看得懂。重点关注一下 AST 中的`expression: '_s(price)+" 元"'`，对应的是原模板中的`{{price}}`。从表达式的形式可以猜测到，`_s(price)`就是一个函数。但是现在还处于一个字符串中，字符串如何当做函数来执行？—— 下文会有介绍，但是也可以提前想想`new Function(...)`怎么使用。
+
+这里仅仅是拿`{{price}}`这样最简单的一个表达式指令做例子。不同的指令，在 AST 中会有不同的形式来表示。读者可以自己运行一个 Vue 的 demo 然后在 Vue.js 源码中搜索`var ast = parse(template.trim(), options);`，然后再下一行加`console.log(ast)`自己去看。总结一下，Vue 将模板字符串转化为 AST 主要有两个目的，最终目的还是让 JS 代码能读懂这个模板：
+
+- 将非结构化的字符串转化为结构化的对象
+- 将 html 和 JS 都不能直接识别的指令，转化为 JS 能识别的表达式形式
+
+> PS：人和计算机是一对矛盾，人易读懂的（如模板、指令）计算机却不易不懂，计算机易读懂的（表达式、复杂的函数体）人却很难读懂。这个矛盾一直存在着，人也一直妥协着，因为计算式傻笨傻笨的不懂得像人妥协。
+
+接着来说一下 Vue 是如何将模板字符串解析成 AST 结构的。
+
+假如我们现在要做一个简单的搜索引擎或者网络爬虫，从成千上网的网页上抓取各种页面信息，那么最终抓取到的结构是什么呢？—— 是一个一个的 html 文件。接下来该如何分析这些 html 文件呢（或者是 html 字符串），肯定是先得将这坨字符串进行结构化。这种场景，想来大家也能猜到，业界肯定已经早就有了现成的工具去做这件事，可以上网搜一下`htmlparser`。
+
+Vue 就参考了 htmlparser 去解析模板，源码参见 [./code/src/compoler/parser/html-parser.js](./code/src/compoler/parser/html-parser.js) 。我自己总结的简化版源码中，将该代码省略了。因为它太复杂，不易于阅读，我找打了一个更加简单的理解方式 simplehtmlparser.js —— 为了投机取巧也不容易。
+
+```html
+<script type="text/javascript" src="./simplehtmlparser.js"></script>
+<script type="text/javascript">
+    var parser = new SimpleHtmlParser();
+    var html = '<div id="app">\n<p v-show="show">hello parser</p>\n<!--my-comment-->\n</div>';
+    console.log(html)
+
+    // 处理器
+    var handler = {
+        startElement: function (sTagName, oAttrs) {
+            console.log(sTagName, oAttrs)
+        },
+        endElement: function (sTagName) {
+            console.log(sTagName, 'end')
+        },
+        characters: function (s) {
+            console.log(s, 'characters')
+        },
+        comment: function (s) {
+            console.log(s, 'comment')
+        }
+    };
+
+    // parse
+    parser.parse(html, handler);
+</script>
+```
+
+以上是使用 simplehtmlparser.js 的例子，源码在 [./test/htmlparser/demo.html](./test/htmlparser/demo.html) 中。从这个例子的使用，基本就能看出 Vue 使用 htmlparser 的过程，想了解 htmlparser 的内部逻辑，也可参考 [./test/htmlparser/simplehtmlparser.html](./test/htmlparser/simplehtmlparser.html) ，只有 100 行代码，非常简单易懂。
+
+从 demo 中看，htmlparser 接收到模板字符串，然后能分析出每个 tag 的开始、结束，tag 的类型和属性。有了这些，我们就能将一个模板字符串生成一个 AST 。具体的过程，大家可以参考源码 [./code/src/compoler/parser/index.js](./code/src/compoler/parser/index.js)
+
+### 优化 AST 找到最大静态子树
+
+```html
+<div id="app">
+    <p>{{price}} 元</p>
+</div>
+```
+
+这个模板生成 AST ，是没有静态节点的，因为都是`{{price}}`的父节点，`price`一变都得跟着受牵连。但是下面这个模板就会有静态节点
+
+```html
+<div id="app">
+    <div id="static-div">
+        <p>白日依山尽</p>
+        <p>黄河入海流</p>
+    </div>
+    <p>{{price}} 元</p>
+</div>
+```
+
+和 Model 数据（即`price`）相关的都是动态节点，其他无关的都是静态节点。因此，这些模板对应的节点都是静态的：
+
+```html
+    <div id="static-div">
+        <p>白日依山尽</p>
+        <p>黄河入海流</p>
+    </div>
+```
+
+最后，根据节点的父子关系，要找出最外层的静态节点，因为只要该节点确认为静态，其子节点都无需关心，肯定也是静态的。这个最外层的静态节点就是`<div id="static-div">`，即标题中提到的“最大静态子树”。那么，该模板最终生成的 AST 简化之后是这样的：
+
+```js
+{
+    type: 1,
+    tag: 'div',
+    attrs: {id: 'app'},
+    children: [
+        {
+            type: 1,
+            tag: 'div',
+            attrs: {id: 'static-div'},
+            children: [
+                // 省略两个静态的 p 节点
+            ],
+            static: true
+        },
+        {
+            // 省略 <p>{{price}} 元</p> 节点
+        }
+    ],
+    static: false
+}
+```
+
+在知道如何标注出静态节点的最后，还是要再次强调一下标注最大静态子树的用意：根据 MVVM 的交互方式，Model 的数据修改要同时修改 View ，那些 View 中和 Model 没有关系的部分，就没必要随着 Model 的变化而修改了，因此要将其标注为静态节点。最终目的就是要更加更新 View 的效率。
+
+### 生成 render 函数
 
 ```html
 <div id="app">
@@ -373,7 +549,7 @@ var code = '_c("div", {id: "app"}, [_c("p", {}, [_t(this.price)])])'
 render = function () {
     _c('div', {id: 'app'}, [
         _c('p', {}, [
-            _t(this.prirce)
+            _t(this.prirce + ' 元')
         ])
     ])
 }
@@ -381,51 +557,224 @@ render = function () {
 
 看以上代码的函数和最初的模板，是不是很相似？他们的区别在于：模板是 html 格式，但是 html 不会识别`{{price}}`；而函数完全是 JS 代码，`this.price`放在 JS 中完全可以被运行。
 
-以上简单描述了从模板到 render 函数的简单过程，其中省略了很多细节和实现方式，下文会深入讲解。不过在看下文之前，这一点的内容还是要求读者必须能轻松理解，否则看下文将会很吃力。
+以上还是以一个最简单的模板为例，模板如果变的复杂，需要注意两方面：
 
-### 针对纯静态节点的考虑
+- 不同的指令，生成 render 函数会不一样。指令越多，render 函数会变得越复杂。
+- 如果有静态的节点，将不会在 render 函数中体现，而是在`staticRenderFns`中体现。静态节点只会在初次显示 View 的时候被执行，后续的 Model 变化将不会再触发静态节点的渲染。
 
-也同时介绍出 staticRenderFns ，介绍出来它的用意
+### 整理流程
 
-### 解析模板的基本工具
+![](https://user-images.githubusercontent.com/9583120/31386983-622b714a-ad8e-11e7-97c7-02204e7a388f.png)
 
-可以先用 simplehtmlparser.js 做例子
+参考文章一开始给出的流程图，模板渲染就是图中上面那部分。简单看来就是 3 部分：
 
-### AST - Abstract Syntax Tree
+- 根据模板生成 AST
+- 优化 AST 找出其静态，不依赖 Model 改变而改变的部分
+- 根据优化后的 AST 生成 render 函数
 
-待完善……
+### 和绑定依赖的关系
 
-### 最大静态子树
+回顾文章一开始介绍响应式的那部分，通过`Object.defineProperty`的设置，在 Model 属性`get`的时候会被绑定依赖。现在看一下 render 函数，在 render 函数执行的时候，肯定会触发`get`，从而绑定依赖。
 
-待完善……
+因此，到这里，绑定依赖的逻辑，就首先清楚了。
 
-### code-gen
+### 接下来
 
-待完善……
-
-### 生成函数
-
-待完善……
+该部分最后生成是 render 函数，那么 render 函数何时被执行，以及执行的时候生成了什么，下文将要介绍。
 
 -------
 
 ## 虚拟 DOM
 
-待完善……
+这部分是围绕着 vdom 来介绍 View 的渲染，包括 View 的渲染和更新、以及响应式如何触发这种更新机制。但是，不会深入讲解 vdom 内部的原理。Vue2 源码中的 vdom 也不是完全自己写的，而是将 [Snabbdom](https://github.com/snabbdom/snabbdom)  这一经典的 vdom 开源库集成进来的。想要深入学习 vdom 可参考：
 
-https://github.com/livoras/blog/issues/13 深度解析 vdom
+- 经典博客 [深度解析 vdom](https://github.com/livoras/blog/issues/13)
+- 《Vue.js 权威指南》一书中介绍 vdom 的章节，通过示例和图形的方式介绍的比较清晰
+- Snabbdom 的使用和实现，具体资源网上去搜
 
+### vdom 的基本使用
 
+浏览器中解析 html 会生成 DOM 树，它是由一个一个的 node 节点组成。同理，vdom 也是由一个一个的 vnode 组成。vdom 、 vnode 都是用 JS 对象的方式来模拟真实的 DOM 或者 node 。
 
--------
+参考 [Snabbdom](https://github.com/snabbdom/snabbdom) 的样例
 
-## 整理流程
+```js
+// 获取容器元素
+var container = document.getElementById('container');
+// 创造一个 vnode
+var vnode = h('div#container.two.classes', {on: {click: someFn}}, [
+  h('span', {style: {fontWeight: 'bold'}}, 'This is bold'),
+  ' and this is just normal text',
+  h('a', {props: {href: '/foo'}}, 'I\'ll take you places!')
+]);
+// Patch into empty DOM element – this modifies the DOM as a side effect
+patch(container, vnode);
+```
 
-待完善……
+`h`函数可以生成一个 vnode ，然后通过`patch`函数将生成的 vnode 渲染到真实的 node（`container`）中。这其中涉及不到 vdom 的核心算法 —— diff 。继续追加几行代码：
 
-- Observer Dep Watcher 的关系
-- ast render vdom 的关系
+```js
+var newVnode = h('div#container.two.classes', {on: {click: anotherEventHandler}}, [
+  h('span', {style: {fontWeight: 'normal', fontStyle: 'italic'}}, 'This is now italic type'),
+  ' and this is still just normal text',
+  h('a', {props: {href: '/bar'}}, 'I\'ll take you places!')
+]);
+// Second `patch` invocation
+patch(vnode, newVnode); // Snabbdom efficiently updates the old view to the new state
+```
 
+又生成了新的 vnode `newVnode` ，然后`patch(vnode, newVnode)`。这其中就会通过 diff 算法去对比`vnode`和`newVnode`，对比两者的区别，最后渲染真实 DOM 时候，只会将有区别的部分重新渲染。在浏览器中，DOM 的任何操作都是昂贵的，减少 DOM 的变动，就会提高性能。
+
+### render 函数生成 vnode
+
+以上示例中，vnode 是手动生成的，在 Vue 中 render 函数就会生成 vnode —— render 函数就是刚刚介绍过的。这样一串联，整个流程就很清晰了：
+
+- 解析模板最终生成 render 函数。
+- 初次渲染时，直接执行 render 函数（执行过程中，会触发 Model 属性的`get`从而绑定依赖）。render 函数会生成 vnode ，然后 patch 到真实的 DOM 中，完成 View 的渲染。
+- Model 属性发生变化时，触发通知，重新执行 render 函数，生成 newVnode ，然后`patch(vnode, newVnode)`，针对两者进行 diff 算法，最终将有区别的部分重新渲染。
+- Model 属性再次发生变化时，又会触发通知 …… 
+
+另外，还有一个重要信息。如果连续修改多个 Model 属性，那么会连续触发通知、重新渲染 View 吗？—— 肯定不会，**View 的渲染是异步的**。即，Vue 会一次性集合多个 Model 的变更，最后一次性渲染 View ，提高性能。
+
+以上描述的触发 render 函数的过程，可以从源码 [./code/src/core/instance/lifecycle.js] 中`mountComponent`中找到。这一行最关键`vm._watcher = new Watcher(vm, updateComponent, noop)`，其中`updateComponent`就会触发执行 render 函数。
+
+下面就重点介绍一下`new Watcher`是干嘛用的。
+
+### Watcher
+
+Watch 的定义在 [./code/src/core/observer/watcher.js](./code/src/core/observer/watcher.js) 中，简化后的代码如下
+
+```js
+import Dep, { pushTarget, popTarget } from './dep'
+
+export default class Watcher {
+  constructor (
+    vm: Component,
+    expOrFn: string | Function,
+    cb: Function
+  ) {
+    // 传入的函数，赋值给 this.geter
+    this.getter = expOrFn
+    // 执行 get() 方法
+    this.value = this.get()
+  }
+
+  get () {
+    // 将 this （即 Wathcer 示例）给全局的 Dep.target
+    pushTarget(this)
+    let value
+    const vm = this.vm
+    try {
+      // this.getter 即 new Watcher(...) 传入的第二个参数 expOrFn
+      // 这一步，即顺便执行了 expOrFn
+      value = this.getter.call(vm, vm)
+    } catch (e) {
+      // ...
+    } finally {
+      popTarget()
+    }
+    return value
+  }
+
+  // dep.subs[i].notify() 会执行到这里
+  update () {
+    // 异步处理 Watcher
+    // queueWatcher 异步调用了 run() 方法，因为：如果一次性更新多个属性，无需每个都 update 一遍，异步就解决了这个问题
+    queueWatcher(this)
+  }
+
+  run () {
+    // 执行 get ，即执行 this.getter.call(vm, vm) ，即执行 expOrFn
+    this.get()
+  }
+}
+```
+
+结合调用它的语句`new Watcher(vm, updateComponent, noop)`，将`updateComponent`复制给`this.getter`，然后代码会执行到`get`函数。
+
+首先，`pushTarget(this)`将当前的 Wacther 实例赋值给了`Dep.target`。这里要联想到上文介绍响应式的时候的一段代码
+
+```js
+    Object.defineProperty(obj, key, {
+        get: function reactiveGetter () {
+            if (Dep.target) {
+              dep.depend()
+            }
+            return val
+        },
+        set: function reactiveSetter (newVal) {
+            val = newVal
+            dep.notify()
+        }
+    })
+```
+
+注意看上面代码中的`if (Dep.target) { dep.depend() }`。此前一直说“触发`get`时候绑定依赖”这句话，到现在终于可以有一个结论：绑定的依赖就是这个`new Watcher(...)`。
+
+然后，执行了`this.getter.call(vm, vm)`，即将`updateComponent`执行了，触发了初次的渲染。函数的执行将真正触发`get`，然后绑定依赖。过程基本走通了。
+
+### 触发通知
+
+当 Model 属性修改时会触发到上面代码中的`set`函数，然后执行`dep.notify()`。继续看看这个`notify`函数的内容
+
+```js
+export default class Dep {
+  // 省略 N 行
+
+  notify () {
+    // stabilize the subscriber list first
+    const subs = this.subs.slice()
+    for (let i = 0, l = subs.length; i < l; i++) {
+      // 在 defineReactive 的 setter 中触发
+      // subs[i] 是一个 Watcher 实例
+      subs[i].update()
+    }
+  }
+}
+```
+
+这里的`subs`就存储着所有的`Watcher`实例，然后遍历去触发它们的`update`方法。找到上文粘贴出来的`Watcher`的源码，其中`update`这么定义的：
+
+```js
+  // dep.subs[i].notify() 会执行到这里
+  update () {
+    // 异步处理 Watcher
+    // queueWatcher 异步调用了 run() 方法，因为：如果一次性更新多个属性，无需每个都 update 一遍，异步就解决了这个问题
+    queueWatcher(this)
+  }
+
+  run () {
+    // 执行 get ，即执行 this.getter.call(vm, vm) ，即执行 expOrFn
+    this.get()
+  }
+```
+
+看一下代码的注释也基本就能明白了，`update`会异步调用`run`（为何是异步调用，上文也介绍过了）。然后`run`中执行的`this.get()`函数上文已经介绍过，会触发传进来的`updateComponent`函数，也就触发了 View 的更新。
+
+### 最后
+
+该部分虽然名字是“虚拟 DOM”，但是有一半儿介绍了响应式的内容。这也是没办法，Vue MVVM 的整体流程就是这么走的。因此，该部分要求读者明白两点内容：
+
+- vdom 的生成和 patch
+- 完整的响应式流程
+
+-----
+
+## 如何阅读简化后的源码
+
+下面简单说一下如何阅读我整理出来的只针对 MVVM 的简化后的 Vue2 的源码
+
+- `code/package.json`中，`scripts`规定了打包的各种命令，只看`dev`就好了
+- 通过`dev`打包命令，可以对应到`code/build/config.js`，并对应到`web-full-dev`的配置，最终对应到`./code/src/platforms/web/entry-runtime-with-compiler.js`
+- 然后剩下的代码，就是可以通过 JS 模块化规则找到。大的模块分为：`src/compiler`是模板编译相关，`src/core/instance`是 Vue 实例相关，`src/core/observer`是响应式相关，`src/core/vdom`是 vdom 相关。
+
+vue2 源码结构非常清晰，读者如果自己做框架和工具的话，可以参考这个经典框架的源码。
+
+-----
+
+## 最后
+
+MVVM 涉及的内容、代码都很多，虽然是快速了解，但是篇幅也很大。外加自己也是现学现卖，难免有些杂乱，读者如有问题或者建议，欢迎给我 [提交 issue](https://github.com/wangfupeng1988/learn-vue2-mvvm/issues) 。
 
 -------
 
@@ -458,6 +807,7 @@ https://github.com/livoras/blog/issues/13 深度解析 vdom
 - https://github.com/answershuto/learnVue
 - https://github.com/xufei/blog/issues/10
 - https://cn.vuejs.org/v2/guide/reactivity.html
+- https://item.jd.com/12028224.html
 
 ## 关于作者
 
