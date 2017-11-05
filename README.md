@@ -46,9 +46,9 @@ MVVM 拆解开来就是 Model View ViewModel ，对设计模式多少了解一�
 
 **View** 即视图，我觉得更好的解释是“模板”，就是代码中`<div id="app">...</div>`的内容，用于显示信息以及交互事件的绑定，写过 html 的都明白。
 
-**Model** 即模型，跟 MVC 中的 Model 一样，就是想要显示到模型上的数据，也是我们需要在程序生命周期中可能需要更新的数据。View 和 Model 分开，两者无需相互关心，相比于 jquery 时代，这已经是设计上的一个巨大进步。
+**Model** 即模型（或数据），跟 MVC 中的 Model 一样，就是想要显示到模型上的数据，也是我们需要在程序生命周期中可能需要更新的数据。View 和 Model 分开，两者无需相互关心，相比于 jquery 时代，这已经是设计上的一个巨大进步。
 
-两者分开之后得通过 **ViewModel** 连接起来，`el: '#app'`牵着 View ，`data: model`牵着 Model ，还有一个`methods`（其实仅仅是`methods`）充当 controller 的角色，可以修改 Model 的值。
+两者分开之后得通过 **ViewModel** 连接起来，`el: '#app'`牵着 View ，`data: model`牵着 Model ，还有一个`methods`（其实不仅仅是`methods`，还有其他配置）充当 controller 的角色，可以修改 Model 的值。
 
 ### 带来的改变
 
@@ -428,7 +428,7 @@ function baseCompile (
 
 假如我们现在要做一个简单的搜索引擎或者网络爬虫，从成千上网的网页上抓取各种页面信息，那么最终抓取到的结构是什么呢？—— 是一个一个的 html 文件。接下来该如何分析这些 html 文件呢（或者是 html 字符串），肯定是先得将这坨字符串进行结构化。这种场景，想来大家也能猜到，业界肯定已经早就有了现成的工具去做这件事，可以上网搜一下`htmlparser`。
 
-Vue 就参考了 htmlparser 去解析模板，源码参见 [./code/src/compoler/parser/html-parser.js](./code/src/compoler/parser/html-parser.js) 。我自己总结的简化版源码中，将该代码省略了。因为它太复杂，不易于阅读，我找打了一个更加简单的理解方式 simplehtmlparser.js —— 为了投机取巧也不容易。
+Vue 就参考了 htmlparser 去解析模板，源码参见 [./code/src/compiler/parser/html-parser.js](./code/src/compiler/parser/html-parser.js) 。我自己总结的简化版源码中，将该代码省略了。因为它太复杂，不易于阅读，我找打了一个更加简单的理解方式 simplehtmlparser.js —— 为了投机取巧也不容易。
 
 ```html
 <script type="text/javascript" src="./simplehtmlparser.js"></script>
@@ -460,7 +460,7 @@ Vue 就参考了 htmlparser 去解析模板，源码参见 [./code/src/compoler/
 
 以上是使用 simplehtmlparser.js 的例子，源码在 [./test/htmlparser/demo.html](./test/htmlparser/demo.html) 中。从这个例子的使用，基本就能看出 Vue 使用 htmlparser 的过程，想了解 htmlparser 的内部逻辑，也可参考 [./test/htmlparser/simplehtmlparser.html](./test/htmlparser/simplehtmlparser.html) ，只有 100 行代码，非常简单易懂。
 
-从 demo 中看，htmlparser 接收到模板字符串，然后能分析出每个 tag 的开始、结束，tag 的类型和属性。有了这些，我们就能将一个模板字符串生成一个 AST 。具体的过程，大家可以参考源码 [./code/src/compoler/parser/index.js](./code/src/compoler/parser/index.js)
+从 demo 中看，htmlparser 接收到模板字符串，然后能分析出每个 tag 的开始、结束，tag 的类型和属性。有了这些，我们就能将一个模板字符串生成一个 AST 。具体的过程，大家可以参考源码 [./code/src/compiler/parser/index.js](./code/src/compiler/parser/index.js)
 
 ### 优化 AST 找到最大静态子树
 
@@ -751,7 +751,7 @@ export default class Dep {
 
 看一下代码的注释也基本就能明白了，`update`会异步调用`run`（为何是异步调用，上文也介绍过了）。然后`run`中执行的`this.get()`函数上文已经介绍过，会触发传进来的`updateComponent`函数，也就触发了 View 的更新。
 
-### 最后
+### 整体流程
 
 该部分虽然名字是“虚拟 DOM”，但是有一半儿介绍了响应式的内容。这也是没办法，Vue MVVM 的整体流程就是这么走的。因此，该部分要求读者明白两点内容：
 
